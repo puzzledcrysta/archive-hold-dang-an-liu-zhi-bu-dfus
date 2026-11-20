@@ -1,6 +1,6 @@
 from app.errors import DataError
 from app.evidence import finding
-from .reader import decode, records
+from .reader import decode, tolerant_records
 
 
 def intake(payload):
@@ -11,8 +11,15 @@ def intake(payload):
         raise DataError('BLANK_FILE','文件只有空白')
     header = None
     rejected, accepted, blanks, repeat = [],[],[],[]
-    for line, raw in records(text):
-        values = [part.strip().removeprefix('\ufeff') for part in raw]
+    rows = tolerant_records(text)
+    truncated = None
+    while True:
+        try:
+            line, raw = next(rows)
+        except StopIteration as stopped:
+            truncated = stopped.value
+            break
+        values = [part.strip().removeprefix('﻿') for part in raw]
         if header is None:
             if not any(values):
                 continue
@@ -29,9 +36,17 @@ def intake(payload):
         else:
             accepted.append({'line':line,'raw':raw,'values':values})
     if header is None:
+        # 截断发生在表头之前时无任何可采信记录，仍按整批拒绝处理
+        if truncated is not None:
+            raise DataError('CSV',f'第 {truncated["line"]} 行表格语法错误')
         raise DataError('BLANK_FILE','文件只有空白')
-    count = sum(map(len,(rejected, accepted, blanks, repeat)))
+    tail = []
+    if truncated is not None:
+        tail = [finding({'line':truncated['line'],'raw':[truncated['text'].rstrip('\r\n')]},
+                        'TAIL_TRUNCATED','末行未读完，批次暂算待补，未读记录不得采信')]
+        tail[0]['prefix'] = truncated['prefix']
+    count = sum(map(len,(rejected, accepted, blanks, repeat, tail)))
     if not count:
         raise DataError('HEADER_ONLY','文件只有表头')
     return {'header':header,'encoding':encoding,'rows':accepted,'rejected':rejected,'blank_lines':blanks,
-            'header_lines':repeat,'input_count':count}
+            'header_lines':repeat,'truncated':tail,'input_count':count}

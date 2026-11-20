@@ -18,6 +18,8 @@ def decide(run_id,version,decision,note):
     with connection() as db:
         db.execute('BEGIN IMMEDIATE')
         run = json.loads(lookup(db,run_id)['result'])
+        if run.get('provisional'):
+            raise DataError('PROVISIONAL','批次末行截断待补，暂算结果不得核清确认',409)
         current = db.execute('SELECT COALESCE(MAX(version),0) FROM reviews WHERE run_id=?',(run_id,)).fetchone()[0]
         if current != version:
             raise DataError('STALE','复核版本已过期，请刷新',409)

@@ -50,6 +50,14 @@ class Review(BaseModel):
     note: str = Field(default='',max_length=500)
 
 
+class Supplement(BaseModel):
+    data: CsvText | None = None
+    data_base64: EncodedCsv | None = None
+
+    def raw(self):
+        return input_bytes(self.data, self.data_base64, SAMPLE_ROOT/'shift.csv')
+
+
 def read_sample(name):
     choices = {'shift':'shift.csv','external':'external.csv'}
     if name not in choices:

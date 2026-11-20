@@ -47,10 +47,26 @@ def test_gb18030(source):
     assert data['header'][0] == '业务编号' and data['rows'][0]['values'][0] == '00013'
 
 
-def test_truncated_rejected():
-    # TRAP-16
+def test_truncated_tail_is_provisional_not_rejected():
+    # TRAP-16：末行引号截断不再整批拒绝，前半份完整记录进入暂算，未读尾部单独登记
     from pathlib import Path
     payload = (Path(__file__).resolve().parents[1] / 'sample_data/truncated.csv').read_bytes()
+    report = intake(payload)
+    assert report['rows'] == []
+    tail, = report['truncated']
+    assert tail['code'] == 'TAIL_TRUNCATED' and tail['line'] == 2
+    assert report['input_count'] == 1
+
+
+def test_other_csv_syntax_still_rejected():
+    # 非末行截断的语法错误仍然整批拒绝
     with pytest.raises(DataError) as error:
-        intake(payload)
-    assert error.value.code == 'CSV' and '2' in str(error.value)
+        intake('编号,记录\n001,"x"y\n'.encode())
+    assert error.value.code == 'CSV'
+
+
+def test_truncated_before_header_rejected():
+    # 表头本身被截断、没有任何可采信记录时仍整批拒绝
+    with pytest.raises(DataError) as error:
+        intake('"编号,记录'.encode())
+    assert error.value.code == 'CSV'

@@ -22,6 +22,22 @@ def persist(run_id,source,book,result,created):
         return lookup(db,run_id)
 
 
+def link_completion(provisional_id, formal_id):
+    with connection() as db:
+        db.execute('INSERT OR IGNORE INTO completions VALUES (?,?)',(provisional_id,formal_id))
+
+
 def history():
     with connection() as db:
-        return [dict(row) for row in db.execute('SELECT id,created FROM runs ORDER BY created DESC,id DESC LIMIT 50')]
+        rows = db.execute(
+            'SELECT id, created, '
+            "COALESCE(json_extract(result,'$.manifest.status'),'FORMAL') AS status, "
+            "COALESCE(json_extract(result,'$.provisional'),0) AS provisional "
+            'FROM runs ORDER BY created DESC,id DESC LIMIT 50').fetchall()
+        completed = {row['provisional_id'] for row in db.execute('SELECT provisional_id FROM completions')}
+        items = []
+        for row in rows:
+            item = dict(row)
+            item['completed'] = row['id'] in completed
+            items.append(item)
+        return items

@@ -27,6 +27,16 @@
 <div class="kpi"><small>账差</small><strong data-count="mismatched">—</strong><span>条</span></div>
 <div class="kpi"><small>净差</small><strong data-count="delta">—</strong><span>天</span></div>
         </section>
+        <section class="panel provisional" id="provisional-banner" hidden>
+          <div class="panel__body">
+            <strong>暂算批次 · 末行截断待补</strong>
+            <p id="provisional-detail"></p>
+            <form id="supplement">
+              <label>补传完整来源文件 <input id="supplement-file" type="file" accept=".csv,text/csv"></label>
+              <button class="btn btn--primary" type="submit">补齐并恢复正式对账</button>
+            </form>
+          </div>
+        </section>
         <div class="grid">
     <article class="panel signal" id="evidence-panel" data-instrument="receipt">
       <div class="panel__head"><h2>政策与留置</h2><span class="num" id="evidence-key"></span></div>

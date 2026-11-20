@@ -85,7 +85,17 @@ function setRun(report) {
   topExport.href = `/api/export/${id}`;
   const values = {...result.counts, delta: result.book.delta, mismatched: result.book.mismatched};
   for (const cell of document.querySelectorAll('[data-count]')) cell.textContent = values[cell.dataset.count];
-  live.textContent = `批次 ${id.slice(0, 9)} · ${result.balanced ? '记录已对齐' : '记录数不符'}`;
+  const banner = byId('provisional-banner');
+  banner.hidden = !result.provisional;
+  if (result.provisional) {
+    const tail = result.truncated[0];
+    byId('provisional-detail').textContent =
+      `第 ${tail.line} 行起的记录未读完，当天结果仅为暂算，不得核清确认；补传须保留已读记录且不得改动。`;
+    byId('supplement-file').value = '';
+  }
+  live.textContent = result.provisional
+    ? `批次 ${id.slice(0, 9)} · 暂算待补`
+    : `批次 ${id.slice(0, 9)} · ${result.balanced ? '记录已对齐' : '记录数不符'}`;
 }
 
 async function render() {
@@ -117,6 +127,7 @@ async function render() {
       const intake = await query('/api/intake', inputs);
       view = [line, ['分类', 'kind'], ['字段', raw]];
       rows = [...intake.rows.map(row => ({...row,kind:'完整记录'})), ...intake.rejected.map(row => ({...row,kind:'坏行'})),
+              ...(intake.truncated || []).map(row => ({...row,kind:'末行截断待补'})),
               ...intake.blank_lines.map(line => ({line,kind:'空白行',raw:[]})),
               ...intake.header_lines.map(line => ({line,kind:'重复表头',raw:[]}))].sort((a,b) => a.line-b.line);
     } else if (stage === 'contract') {
@@ -125,7 +136,10 @@ async function render() {
       rows = contract.accepted;
     } else if (stage === 'runs') {
       const runs = await query('/api/runs');
-      view = [['指纹','id'], ['创建 UTC','created'], ['操作', row => {
+      view = [['指纹','id'], ['状态', row => el('span',
+          row.status === 'PROVISIONAL' ? (row.completed ? '暂算（已补齐）' : '暂算待补') : '正式',
+          row.status === 'PROVISIONAL' ? 'state problem' : 'state')],
+        ['创建 UTC','created'], ['操作', row => {
         const current = row.id === id;
         const button = el('button',current ? '复算当前批' : '打开此批','btn');
         button.addEventListener('click', async () => {
@@ -156,7 +170,7 @@ async function render() {
       rows = timeline;
       if (ticket === renderEpoch) {
         reviewVersion = timeline[0]?.version || 0;
-        byId('review').hidden = false;
+        byId('review').hidden = result.provisional;
       }
     }
     if (ticket === renderEpoch) {
@@ -242,5 +256,18 @@ byId('review').addEventListener('submit', async event => {
     notice(error.message, true);
     if (error.status === 409) await render();
   }
+});
+byId('supplement').addEventListener('submit', async event => {
+  event.preventDefault();
+  const file = byId('supplement-file').files[0];
+  if (!file) return notice('请先选择补传的完整来源文件', true);
+  try {
+    const [, bytes] = await readInput(file);
+    const report = await query(`/api/runs/${result.manifest.run_id}/complete`,
+                                {data_base64: encodeInput(bytes)});
+    setRun(report);
+    notice('文件已补齐，已恢复正式对账');
+    await render();
+  } catch (error) { notice(error.message, true); }
 });
 render();

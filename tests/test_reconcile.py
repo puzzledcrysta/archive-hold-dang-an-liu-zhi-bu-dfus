@@ -12,7 +12,7 @@ def test_input_rows_conserved(source,book):
     result = execute(source,book)
     assert result['balanced'] is True
     assert [row['key'] for row in result['quarantine'] if row['key'].startswith('009')] == ['00901','00902']
-    assert result['counts'] == {'input':36,'accepted':26,'rejected':6,'suppressed':2,'blank':1,'repeated_header':1}
+    assert result['counts'] == {'input':36,'accepted':26,'rejected':6,'suppressed':2,'blank':1,'repeated_header':1,'truncated':0}
 
 
 def test_reference_discrepancies_are_distinguished(source,book):

@@ -12,3 +12,11 @@ REASONS = {
 }
 
 REASONS.update({'ARCHIVE_POLICY': '保管版本冲突或缺失', 'ARCHIVE_HOLD': '留置区段无效', 'ARCHIVE_DATES': '日期范围无效', 'DATE': '日期格式无效', 'REV_BLOCKED': '较新来源尚未采信'})
+
+REASONS.update({
+    'TAIL_TRUNCATED': '末行截断待补（暂算，不得采信）',
+    'PROVISIONAL': '暂算批次待补，不得核清确认',
+    'SUPPLEMENT_STATE': '该批次无需补传',
+    'SUPPLEMENT_CHANGED': '补传改动了先前完整记录，批次仍待补',
+    'SUPPLEMENT_TRUNCATED': '补传文件仍有末行截断，批次仍待补',
+})

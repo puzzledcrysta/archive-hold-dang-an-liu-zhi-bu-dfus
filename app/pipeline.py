@@ -21,9 +21,12 @@ def execute(source,book):
     raw, accepted, bad = (result[key] for key in ('intake','accepted','rejected'))
     suppressed = result['quality']['suppressed']
     counts = {'input':raw['input_count'],'accepted':len(accepted),'rejected':len(bad),
-              'suppressed':len(suppressed),'blank':len(raw['blank_lines']),'repeated_header':len(raw['header_lines'])}
+              'suppressed':len(suppressed),'blank':len(raw['blank_lines']),
+              'repeated_header':len(raw['header_lines']),'truncated':len(raw['truncated'])}
     balanced = counts['input'] == sum(value for key,value in counts.items() if key!='input')
     if not balanced:
         raise RuntimeError('来源记录数量无法闭合')
+    provisional = bool(raw['truncated'])
     return {'counts':counts,'balanced':balanced,'accepted':accepted,'quarantine':bad,'suppressed':suppressed,
-            'reasons':distribution(bad),'book':compare(accepted,book),'encoding':raw['encoding']}
+            'reasons':distribution(bad),'book':compare(accepted,book),'encoding':raw['encoding'],
+            'provisional':provisional,'truncated':raw['truncated']}
